@@ -15,6 +15,6 @@ object PropertiesUtils {
     }
 
     def main(args: Array[String]): Unit = {
-        println(PropertiesUtils("kafka.broker.list"))
+        println(PropertiesUtils("kafka.bootstrap.servers"))
     }
 }
