@@ -101,7 +101,9 @@ object OdsBaseLogAPP {
 
                                 //封装bean
                                 val pageLog =
-                                    PageLog(mid, uid, ar, ch, isNew, md, os, vc, pageId, lastPageId, pageItem, pageItemType, duringTime, ts)
+                                    PageLog(mid, uid, ar, ch, isNew, md, os, vc,
+                                        pageId, lastPageId, pageItem, pageItemType, duringTime,
+                                        ts)
                                 //发送kafka
                                 MyKafkaUtils.send(dwd_page_log, JSON.toJSONString(pageLog, new SerializeConfig(true)))
 
@@ -119,10 +121,10 @@ object OdsBaseLogAPP {
                                         //封装Bean
                                         val pageActionLog =
                                             PageActionLog(
-                                                mid, uid, ar, ch, isNew, md, os, vc, pageId,
-                                                lastPageId, pageItem, pageItemType,
-                                                duringTime, actionId, actionItem, actionItemType,
-                                                actionTs)
+                                                mid, uid, ar, ch, isNew, md, os, vc,
+                                                pageId, lastPageId, pageItem, pageItemType, duringTime,
+                                                actionId, actionItem, actionItemType, actionTs,
+                                                ts)
 
                                         //发送Kafka
                                         MyKafkaUtils.send(dwd_page_action, JSON.toJSONString(pageActionLog, new SerializeConfig(true)))
@@ -142,7 +144,10 @@ object OdsBaseLogAPP {
                                         val displayPosId: String = displayObj.getString("pos_id")
 
                                         //封装Bean
-                                        val displayLog = PageDisplayLog(mid, uid, ar, ch, isNew, md, os, vc, pageId, lastPageId, pageItem, pageItemType, duringTime, displayType, displayItem, displayItemType, displayOrder, displayPosId, ts)
+                                        val displayLog = PageDisplayLog(mid, uid, ar, ch, isNew, md, os, vc,
+                                            pageId, lastPageId, pageItem, pageItemType, duringTime,
+                                            displayType, displayItem, displayItemType, displayOrder, displayPosId,
+                                            ts)
                                         //发送Kafka
                                         MyKafkaUtils.send(dwd_page_display, JSON.toJSONString(displayLog, new SerializeConfig(true)))
                                     }
@@ -161,7 +166,9 @@ object OdsBaseLogAPP {
                                 val openAdSkipMs: Long = startObj.getLong("open_ad_skip_ms")
 
                                 //封装Bean
-                                val startLog = StartLog(mid, uid, ar, ch, isNew, md, os, vc, entry, openAdId, loadingTimeMs, openAdMs, openAdSkipMs, ts)
+                                val startLog = StartLog(mid, uid, ar, ch, isNew, md, os, vc,
+                                    entry, openAdId, loadingTimeMs, openAdMs, openAdSkipMs,
+                                    ts)
                                 //发送Kafka
                                 MyKafkaUtils.send(dwd_start_log, JSON.toJSONString(startLog, new SerializeConfig(true)))
                             }

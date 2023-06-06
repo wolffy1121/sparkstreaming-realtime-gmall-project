@@ -90,14 +90,18 @@ object MyKafkaUtils {
      * 刷写缓冲区
      */
     def flush(): Unit = {
-        if (producer != null) producer.flush()
+        if (producer != null) {
+            producer.flush()
+        }
     }
 
     /**
      * 关闭生产者对象
      */
     def close(): Unit = {
-        if (producer != null) producer.close()
+        if (producer != null) {
+            producer.close()
+        }
     }
 
 }

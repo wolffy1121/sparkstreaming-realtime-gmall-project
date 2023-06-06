@@ -14,19 +14,7 @@ import org.apache.spark.streaming.{Seconds, StreamingContext}
 
 
 /**
- * 消费分流
- * 1. 接收Kafka数据流
- *
- * 2. 转换数据结构:
- * 通用的数据结构: Map 或者 JsonObject
- * 专用的数据结构: bean
- *
- * 3. 分流 : 将数据拆分到不同的主题中
- * 启动主题: DWD_START_LOG
- * 页面访问主题: DWD_PAGE_LOG
- * 页面动作主题:DWD_PAGE_ACTION
- * 页面曝光主题:DWD_PAGE_DISPLAY
- * 错误主题:DWD_ERROR_INFO
+ * 精准一次消费-解决数据丢失问题，但是还是不能解决数据重复问题
  */
 object OdsBaseLogApp2 {
     def main(args: Array[String]): Unit = {
@@ -124,7 +112,9 @@ object OdsBaseLogApp2 {
 
                                 //封装bean
                                 val pageLog =
-                                    PageLog(mid, uid, ar, ch, isNew, md, os, vc, pageId, lastPageId, pageItem, pageItemType, duringTime, ts)
+                                    PageLog(mid, uid, ar, ch, isNew, md, os, vc,
+                                        pageId, lastPageId, pageItem, pageItemType, duringTime,
+                                        ts)
                                 //发送kafka
                                 MyKafkaUtils.send(dwd_page_log, JSON.toJSONString(pageLog, new SerializeConfig(true)))
 
@@ -141,11 +131,10 @@ object OdsBaseLogApp2 {
 
                                         //封装Bean
                                         val pageActionLog =
-                                            PageActionLog(mid, uid, ar, ch,
-                                                isNew, md, os, vc, pageId,
-                                                lastPageId, pageItem, pageItemType,
-                                                duringTime, actionId, actionItem,
-                                                actionItemType, actionTs)
+                                            PageActionLog(mid, uid, ar, ch, isNew, md, os, vc,
+                                                pageId, lastPageId, pageItem, pageItemType, duringTime,
+                                                actionId, actionItem, actionItemType, actionTs,
+                                                ts)
 
                                         //发送Kafka
                                         MyKafkaUtils.send(dwd_page_action, JSON.toJSONString(pageActionLog, new SerializeConfig(true)))
@@ -165,7 +154,10 @@ object OdsBaseLogApp2 {
                                         val displayPosId: String = displayObj.getString("pos_id")
 
                                         //封装Bean
-                                        val displayLog = PageDisplayLog(mid, uid, ar, ch, isNew, md, os, vc, pageId, lastPageId, pageItem, pageItemType, duringTime, displayType, displayItem, displayItemType, displayOrder, displayPosId, ts)
+                                        val displayLog = PageDisplayLog(mid, uid, ar, ch, isNew, md, os, vc,
+                                            pageId, lastPageId, pageItem, pageItemType, duringTime,
+                                            displayType, displayItem, displayItemType, displayOrder, displayPosId,
+                                            ts)
                                         //发送Kafka
                                         MyKafkaUtils.send(dwd_page_display, JSON.toJSONString(displayLog, new SerializeConfig(true)))
                                     }
@@ -183,13 +175,16 @@ object OdsBaseLogApp2 {
                                 val openAdSkipMs: Long = startObj.getLong("open_ad_skip_ms")
 
                                 //封装Bean
-                                val startLog = StartLog(mid, uid, ar, ch, isNew, md, os, vc, entry, openAdId, loadingTimeMs, openAdMs, openAdSkipMs, ts)
+                                val startLog = StartLog(mid, uid, ar, ch, isNew, md, os, vc,
+                                    entry, openAdId, loadingTimeMs, openAdMs, openAdSkipMs,
+                                    ts)
                                 //发送Kafka
                                 MyKafkaUtils.send(dwd_start_log, JSON.toJSONString(startLog, new SerializeConfig(true)))
                             }
 
                         }
                         // foreach里边  executor中执行，一条数据执行一次
+
                     }
 
                 )

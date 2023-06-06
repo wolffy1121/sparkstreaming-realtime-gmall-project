@@ -9,6 +9,7 @@ case class PageDisplayLog(
                            model: String,
                            operate_system: String,
                            version_code: String,
+
                            page_id: String,
                            last_page_id: String,
                            page_item: String,
