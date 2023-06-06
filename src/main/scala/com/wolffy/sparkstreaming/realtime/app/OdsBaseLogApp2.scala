@@ -1,35 +1,36 @@
 package com.wolffy.sparkstreaming.realtime.app
 
-
 import com.alibaba.fastjson.serializer.SerializeConfig
 import com.alibaba.fastjson.{JSON, JSONArray, JSONObject}
 import com.wolffy.sparkstreaming.realtime.bean.{PageActionLog, PageDisplayLog, PageLog, StartLog}
-import com.wolffy.sparkstreaming.realtime.util.MyKafkaUtils
+import com.wolffy.sparkstreaming.realtime.util.{MyKafkaUtils, MyOffsetUtils}
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.common.TopicPartition
 import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.dstream.{DStream, InputDStream}
+import org.apache.spark.streaming.kafka010.{HasOffsetRanges, OffsetRange}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 
-/**
- * @author wolffy
- *         日志数据分流
- *         1、准备实时环境
- *         2、从Kafka中消费数据
- *         3、处理数据
- *         3.1、转换数据结构：Map、JSON
- *         3.2 分流 : 将数据拆分到不同的主题中
- *         启动主题: DWD_START_LOG
- *         页面访问主题: DWD_PAGE_LOG
- *         页面动作主题:DWD_PAGE_ACTION
- *         页面曝光主题:DWD_PAGE_DISPLAY
- *         错误主题:DWD_ERROR_INFO
- */
-object OdsBaseLogAPP {
 
+/**
+ * 消费分流
+ * 1. 接收Kafka数据流
+ *
+ * 2. 转换数据结构:
+ * 通用的数据结构: Map 或者 JsonObject
+ * 专用的数据结构: bean
+ *
+ * 3. 分流 : 将数据拆分到不同的主题中
+ * 启动主题: DWD_START_LOG
+ * 页面访问主题: DWD_PAGE_LOG
+ * 页面动作主题:DWD_PAGE_ACTION
+ * 页面曝光主题:DWD_PAGE_DISPLAY
+ * 错误主题:DWD_ERROR_INFO
+ */
+object OdsBaseLogApp2 {
     def main(args: Array[String]): Unit = {
-        //1、准备实时环境
-        //val ssc = new StreamingContext(sparkContext = ???, batchDuration = ???)
+        //创建配置对象
         val sparkConf: SparkConf = new SparkConf().setAppName("base_log_app").setMaster("local[4]")
         val ssc = new StreamingContext(sparkConf, Seconds(5))
 
@@ -49,14 +50,36 @@ object OdsBaseLogAPP {
         //消费组
         val group_id: String = "ods_base_log_group"
 
+        //补充:
+        // 从redis中读取偏移量
+        val offsets: Map[TopicPartition, Long] = MyOffsetUtils.getOffset(ods_base_topic, group_id)
 
-        //2、从Kafka中消费数据
-        val kafkaDStream: InputDStream[ConsumerRecord[String, String]] =
-            MyKafkaUtils.getKafkaDStream(ods_base_topic, ssc, group_id)
+        // 判断是否能读取到
+        var kafkaDStream: DStream[ConsumerRecord[String, String]] = null
+        if (offsets != null && offsets.nonEmpty) {
+            //redis中有记录offset
+            //1. 接收Kafka数据流
+            kafkaDStream =
+                MyKafkaUtils.getKafkaDStream(ods_base_topic, ssc, offsets, group_id)
+        } else {
+            //redis中没有记录offset
+            //1. 接收Kafka数据流
+            kafkaDStream =
+                MyKafkaUtils.getKafkaDStream(ods_base_topic, ssc, group_id)
+        }
 
-        //kafkaDStream.map(_.value()).print(3)
-        //3、处理数据：转换成JSON对象
-        //3.2、数据分流
+
+        //在数据转换前, 提取本次流中offset的结束点，
+        var offsetRanges: Array[OffsetRange] = null // driver
+        kafkaDStream = kafkaDStream.transform( // 每批次执行一次
+            rdd => {
+                println(rdd.getClass.getName)
+                offsetRanges = rdd.asInstanceOf[HasOffsetRanges].offsetRanges
+                rdd
+            }
+        )
+
+        //2. 转换数据结构
         val jsonDStream: DStream[JSONObject] = kafkaDStream.map(
             record => {
                 val value: String = record.value()
@@ -65,7 +88,8 @@ object OdsBaseLogAPP {
                 jsonObject
             }
         )
-        //3.切分数据分流 foreach 遍历了
+
+        //3.切分数据分流
         jsonDStream.foreachRDD(
             rdd => {
                 rdd.foreach(
@@ -76,7 +100,6 @@ object OdsBaseLogAPP {
                         if (errorObj != null) {
                             MyKafkaUtils.send(dwd_error_info, jsonObj.toJSONString)
                         } else {
-                            //{"common":{"ar":"1","ba":"iPhone","ch":"Appstore","is_new":"1","md":"iPhone Xs Max","mid":"mid_81","os":"iOS 13.2.3","uid":"49","vc":"v2.1.134"},"page":{"during_time":4337,"item":"17,10,29","item_type":"sku_ids","last_page_id":"trade","page_id":"payment"},"ts":1685932974000}
                             //提取公共信息
                             val commonObj: JSONObject = jsonObj.getJSONObject("common")
                             val mid: String = commonObj.getString("mid")
@@ -118,11 +141,11 @@ object OdsBaseLogAPP {
 
                                         //封装Bean
                                         val pageActionLog =
-                                            PageActionLog(
-                                                mid, uid, ar, ch, isNew, md, os, vc, pageId,
+                                            PageActionLog(mid, uid, ar, ch,
+                                                isNew, md, os, vc, pageId,
                                                 lastPageId, pageItem, pageItemType,
-                                                duringTime, actionId, actionItem, actionItemType,
-                                                actionTs)
+                                                duringTime, actionId, actionItem,
+                                                actionItemType, actionTs)
 
                                         //发送Kafka
                                         MyKafkaUtils.send(dwd_page_action, JSON.toJSONString(pageActionLog, new SerializeConfig(true)))
@@ -150,7 +173,6 @@ object OdsBaseLogAPP {
 
                             }
 
-
                             //分流启动日志
                             val startObj: JSONObject = jsonObj.getJSONObject("start")
                             if (startObj != null) {
@@ -167,17 +189,20 @@ object OdsBaseLogAPP {
                             }
 
                         }
+                        // foreach里边  executor中执行，一条数据执行一次
                     }
+
                 )
+                //补充：
+                //foreachRDD里边  driver中执行，一个批次执行一次
+                //提交偏移量
+                MyOffsetUtils.saveOffset(ods_base_topic, group_id, offsetRanges)
             }
         )
 
-        //3.2、数据分流
-        //jsonDStream.print()
-
+        // foreahRDD外面 driver中执行，一次启动执行一次
 
         ssc.start()
         ssc.awaitTermination()
     }
-
 }

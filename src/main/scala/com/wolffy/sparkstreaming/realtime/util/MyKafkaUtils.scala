@@ -20,7 +20,7 @@ object MyKafkaUtils {
     //kafka消费配置
     private val consumerConfig: mutable.Map[String, String] = mutable.Map(
 
-        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> PropertiesUtils("kafka.bootstrap.servers"),
+        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> MyPropertiesUtils("kafka.bootstrap.servers"),
         ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG -> "org.apache.kafka.common.serialization.StringDeserializer",
         ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG -> "org.apache.kafka.common.serialization.StringDeserializer",
         ConsumerConfig.GROUP_ID_CONFIG -> "gmall",
@@ -61,7 +61,7 @@ object MyKafkaUtils {
     def createKafkaProducer(): KafkaProducer[String, String] = {
         //Kafka生产配置
         val props = new Properties()
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, PropertiesUtils("kafka.bootstrap.servers"))
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, MyPropertiesUtils("kafka.bootstrap.servers"))
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer")
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer")
         props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true")
