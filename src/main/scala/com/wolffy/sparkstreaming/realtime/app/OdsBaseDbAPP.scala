@@ -46,6 +46,9 @@ object OdsBaseDbAPP {
         }
 
 
+
+
+
         //3. 提取偏移量结束点
         var  offsetRanges: Array[OffsetRange] = null
         kafkaDStream  = kafkaDStream.transform(
