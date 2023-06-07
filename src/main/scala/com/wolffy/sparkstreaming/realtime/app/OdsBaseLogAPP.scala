@@ -182,7 +182,6 @@ object OdsBaseLogAPP {
         //3.2、数据分流
         //jsonDStream.print()
 
-
         ssc.start()
         ssc.awaitTermination()
     }
